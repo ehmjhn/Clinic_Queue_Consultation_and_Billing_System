@@ -1,0 +1,5 @@
+[project]
+name = "it401w-activity3-systeme-alcanices-jhonemmanuele-fulo-jameoreign-mahusay-isaacjohn"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = []
