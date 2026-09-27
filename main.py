@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 
 
@@ -13,6 +14,10 @@ class ClinicException(Exception):
 # 2. Abstract Base Class
 class Patient(ABC):
     def __init__(self, patient_id: str, name: str, contact_info: str, age: int):
+        if not patient_id or not name or not contact_info:
+            raise ClinicException("Patient ID, Name, and Contact Info cannot be empty.")
+        if age < 0 or age > 120:
+            raise ClinicException("Age must be between 0 and 120.")
         self._patient_id = patient_id
         self._name = name
         self._contact_info = contact_info
@@ -55,12 +60,18 @@ class RegularPatient(Patient):
         return 3
 
     def calculate_discount(self, base_amount: float):
+        if base_amount < 0:
+            raise ClinicException("Base amount cannot be negative.")
         return 0.0
 
 
 class SeniorPatient(Patient):
     def __init__(self, patient_id: str, name: str, contact_info: str, age: int, senior_id: str):
         super().__init__(patient_id, name, contact_info, age)
+        if age < 60:
+            raise ClinicException("Senior patients must be at least 60 years old.")
+        if not senior_id:
+            raise ClinicException("Senior ID cannot be empty.")
         self._senior_id = senior_id
         self._discount_rate = 0.20
 
@@ -68,24 +79,32 @@ class SeniorPatient(Patient):
         return 2
 
     def calculate_discount(self, base_amount: float):
+        if base_amount < 0:
+            raise ClinicException("Base amount cannot be negative.")
         return base_amount * self._discount_rate
 
 
 class EmergencyPatient(Patient):
     def __init__(self, patient_id: str, name: str, contact_info: str, age: int, severity_level: int):
         super().__init__(patient_id, name, contact_info, age)
+        if severity_level < 1 or severity_level > 10:
+            raise ClinicException("Severity level must be between 1 and 10.")
         self._severity_level = severity_level
 
     def get_priority(self):
         return 1
 
     def calculate_discount(self, base_amount: float):
+        if base_amount < 0:
+            raise ClinicException("Base amount cannot be negative.")
         return 0.0
 
 
 # 4. Domain Class
 class Doctor:
     def __init__(self, doctor_id: str, name: str, specialization: str):
+        if not doctor_id or not name or not specialization:
+            raise ClinicException("Doctor ID, Name, and Specialization cannot be empty.")
         self._doctor_id = doctor_id
         self._name = name
         self._specialization = specialization
@@ -121,6 +140,11 @@ class Doctor:
 class Consultation:
     def __init__(self, consultation_id: str, patient: Patient, doctor: Doctor, queue_number: int, service: str,
                  base_charge: float):
+        if not service:
+            raise ClinicException("Service description cannot be empty.")
+        if base_charge < 0:
+            raise ClinicException("Base charge cannot be negative.")
+
         self._consultation_id = consultation_id
         self._patient = patient
         self._doctor = doctor
@@ -131,15 +155,22 @@ class Consultation:
         self._completion_details = ""
 
     @property
-    def patient(self): return self._patient
+    def patient(self):
+        return self._patient
 
     @property
-    def base_charge(self): return self._base_charge
+    def base_charge(self):
+        return self._base_charge
 
     @property
-    def service(self): return self._service
+    def service(self):
+        return self._service
 
     def complete_consultation(self, details: str):
+        if self._status == "Completed":
+            raise ClinicException("Consultation is already completed.")
+        if not details:
+            raise ClinicException("Completion details cannot be empty.")
         self._status = "Completed"
         self._completion_details = details
 
@@ -173,6 +204,8 @@ class BillingRecord:
         return self._subtotal - self._discount
 
     def mark_as_paid(self):
+        if self._is_paid:
+            raise ClinicException("Bill is already paid.")
         self._is_paid = True
 
     def __str__(self):
@@ -202,8 +235,11 @@ class ClinicManager:
         self.doctors[doctor.doctor_id] = doctor
 
     def add_to_queue(self, patient_id: str):
+        if not patient_id:
+            raise ClinicException("Patient ID cannot be empty.")
         if patient_id not in self.patients:
             raise ClinicException("Patient not found.")
+
         patient = self.patients[patient_id]
         if any(q['patient'].patient_id == patient_id for q in self.queue):
             raise ClinicException("Patient is already in the active queue.")
@@ -218,6 +254,8 @@ class ClinicManager:
         return self.queue[0]['patient']
 
     def complete_consultation(self, patient_id: str, doctor_id: str, service: str, charge: float, details: str):
+        if not patient_id or not doctor_id:
+            raise ClinicException("Patient ID and Doctor ID must be provided.")
         if not self.queue or self.queue[0]['patient'].patient_id != patient_id:
             raise ClinicException("This patient is not next in the queue.")
         if doctor_id not in self.doctors:
@@ -231,6 +269,7 @@ class ClinicManager:
         patient = patient_entry['patient']
 
         consult_id = f"C{self._consult_counter:03d}"
+
         consultation = Consultation(consult_id, patient, doctor, patient_entry['queue_number'], service, charge)
 
         consultation.complete_consultation(details)
@@ -246,11 +285,15 @@ class ClinicManager:
         return bill
 
     def search_patient(self, patient_id: str):
+        if not patient_id:
+            raise ClinicException("Patient ID cannot be empty.")
         if patient_id not in self.patients:
             raise ClinicException("Patient not found in records.")
         return self.patients[patient_id]
 
     def print_bill(self, bill_id: str):
+        if not bill_id:
+            raise ClinicException("Bill ID cannot be empty.")
         for bill in self.billing_records:
             if bill.bill_id == bill_id:
                 return bill
@@ -269,6 +312,58 @@ class ClinicManager:
         doc_counts = sorted(self.doctors.values(), key=lambda d: d.consultation_count, reverse=True)
 
         return waiting, (reg_count, sen_count, emg_count), total_subtotal, total_discount, doc_counts
+
+
+# --- HELPER FUNCTIONS FOR INPUT VALIDATION ---
+
+def get_string_input(prompt: str) -> str:
+    while True:
+        value = input(prompt).strip()
+        if value:
+            return value
+        print("      [!] This field cannot be empty. Please try again.")
+
+
+def get_contact_input(prompt: str) -> str:
+    pattern = r"^\+?[\d\s\-\(\)]+$"
+    while True:
+        value = input(prompt).strip()
+        if not value:
+            print("      [!] This field cannot be empty. Please try again.")
+            continue
+        # Check if it matches the pattern AND contains at least one digit
+        if re.match(pattern, value) and any(char.isdigit() for char in value):
+            return value
+        print("      [!] Invalid contact format. Please use numbers, +, -, or spaces (e.g., +63 912-345-6789).")
+
+
+def get_int_input(prompt: str, min_val: int = None, max_val: int = None) -> int:
+    while True:
+        value = input(prompt).strip()
+        try:
+            num = int(value)
+            if min_val is not None and num < min_val:
+                print(f"      [!] Value must be at least {min_val}.")
+                continue
+            if max_val is not None and num > max_val:
+                print(f"      [!] Value cannot exceed {max_val}.")
+                continue
+            return num
+        except ValueError:
+            print("      [!] Invalid input. Please enter a whole number.")
+
+
+def get_float_input(prompt: str, min_val: float = None) -> float:
+    while True:
+        value = input(prompt).strip()
+        try:
+            num = float(value)
+            if min_val is not None and num < min_val:
+                print(f"      [!] Value must be at least {min_val}.")
+                continue
+            return num
+        except ValueError:
+            print("      [!] Invalid input. Please enter a valid decimal number.")
 
 
 def main():
@@ -306,42 +401,51 @@ def main():
         print("  [9] Exit")
         print(DIVIDER)
 
-        choice = input("  Select an option (1-9): ")
+        choice = input("  Select an option (1-9): ").strip()
         print(DIVIDER)
 
         try:
             if choice == '1':
                 print("  >>> REGISTER PATIENT")
-                pid = input("  Patient ID: ")
-                name = input("  Name: ")
-                contact = input("  Contact: ")
-                age = int(input("  Age: "))
-                ptype = input("  Type (1: Regular, 2: Senior, 3: Emergency): ")
+                pid = get_string_input("  Patient ID: ")
+                name = get_string_input("  Name: ")
+                contact = get_contact_input("  Contact: ")  # Updated to use get_contact_input
+                age = get_int_input("  Age: ", min_val=0, max_val=120)
+
+                while True:
+                    ptype = get_string_input("  Type (1: Regular, 2: Senior, 3: Emergency): ")
+                    if ptype in ['1', '2', '3']:
+                        break
+                    print("      [!] Invalid type. Please enter 1, 2, or 3.")
 
                 if ptype == '1':
                     manager.register_patient(RegularPatient(pid, name, contact, age))
                 elif ptype == '2':
-                    sid = input("  Senior ID: ")
-                    manager.register_patient(SeniorPatient(pid, name, contact, age, sid))
+                    while True:
+                        sid = get_string_input("  Senior ID: ")
+                        if age >= 60:
+                            manager.register_patient(SeniorPatient(pid, name, contact, age, sid))
+                            break
+                        else:
+                            print("      [!] Senior patients must be at least 60 years old. Registration failed.")
+                            break
                 elif ptype == '3':
-                    sev = int(input("  Severity Level (1-10): "))
+                    sev = get_int_input("  Severity Level (1-10): ", min_val=1, max_val=10)
                     manager.register_patient(EmergencyPatient(pid, name, contact, age, sev))
-                else:
-                    print(f"\n  [!] Invalid type selection.")
-                    continue
+
                 print(f"\n  [SUCCESS] Patient registered successfully.")
 
             elif choice == '2':
                 print("  >>> REGISTER DOCTOR")
-                did = input("  Doctor ID: ")
-                name = input("  Name: ")
-                spec = input("  Specialization: ")
+                did = get_string_input("  Doctor ID: ")
+                name = get_string_input("  Name: ")
+                spec = get_string_input("  Specialization: ")
                 manager.register_doctor(Doctor(did, name, spec))
                 print(f"\n  [SUCCESS] Doctor registered successfully.")
 
             elif choice == '3':
                 print("  >>> ADD PATIENT TO QUEUE")
-                pid = input("  Enter Patient ID to add to queue: ")
+                pid = get_string_input("  Enter Patient ID to add to queue: ")
                 manager.add_to_queue(pid)
                 print(f"\n  [SUCCESS] Patient added to queue successfully.")
 
@@ -353,11 +457,11 @@ def main():
 
             elif choice == '5':
                 print("  >>> COMPLETE CONSULTATION")
-                pid = input("  Confirm Patient ID: ")
-                did = input("  Enter Doctor ID: ")
-                service = input("  Service rendered: ")
-                charge = float(input("  Base charge amount: "))
-                details = input("  Completion details/notes: ")
+                pid = get_string_input("  Confirm Patient ID: ")
+                did = get_string_input("  Enter Doctor ID: ")
+                service = get_string_input("  Service rendered: ")
+                charge = get_float_input("  Base charge amount: ", min_val=0.0)
+                details = get_string_input("  Completion details/notes: ")
 
                 bill = manager.complete_consultation(pid, did, service, charge, details)
                 print(f"\n  [SUCCESS] Consultation complete.")
@@ -365,14 +469,14 @@ def main():
 
             elif choice == '6':
                 print("  >>> SEARCH PATIENT")
-                pid = input("  Enter Patient ID to search: ")
+                pid = get_string_input("  Enter Patient ID to search: ")
                 patient = manager.search_patient(pid)
                 print(f"\n  [RESULT] {patient}")
                 print(f"  Contact Info: {patient.contact_info}")
 
             elif choice == '7':
                 print("  >>> PRINT BILL")
-                bid = input("  Enter Bill ID to print: ")
+                bid = get_string_input("  Enter Bill ID to print: ")
                 bill = manager.print_bill(bid)
                 print(f"\n  --- OFFICIAL RECEIPT ---")
                 print(f"  Bill ID:       {bill.bill_id}")
@@ -415,8 +519,6 @@ def main():
 
         except ClinicException as e:
             print(f"\n  [ERROR - Business Rule] {e}")
-        except ValueError:
-            print("\n  [ERROR - Input] Invalid data format. Please check your inputs.")
         except Exception as e:
             print(f"\n  [ERROR - System] {e}")
 
