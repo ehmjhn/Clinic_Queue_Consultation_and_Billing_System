@@ -2,7 +2,7 @@ import re
 from abc import ABC, abstractmethod
 
 
-# 1. Custom Exception
+# Custom Exception
 class ClinicException(Exception):
     def __init__(self, message):
         self.message = message
@@ -11,7 +11,7 @@ class ClinicException(Exception):
         return self.message
 
 
-# 2. Abstract Base Class
+# Abstract Base Class
 class Patient(ABC):
     def __init__(self, patient_id: str, name: str, contact_info: str, age: int):
         if not patient_id or not name or not contact_info:
@@ -50,7 +50,7 @@ class Patient(ABC):
         return self.get_priority() < other.get_priority()
 
 
-# 3. Subclasses with specific diagram attributes
+# Subclasses with specific diagram attributes
 class RegularPatient(Patient):
     def __init__(self, patient_id: str, name: str, contact_info: str, age: int):
         super().__init__(patient_id, name, contact_info, age)
@@ -100,7 +100,7 @@ class EmergencyPatient(Patient):
         return 0.0
 
 
-# 4. Domain Class
+# Domain Class
 class Doctor:
     def __init__(self, doctor_id: str, name: str, specialization: str):
         if not doctor_id or not name or not specialization:
@@ -136,7 +136,7 @@ class Doctor:
         return f"Dr. {self._name} ({self._specialization})"
 
 
-# 5. Relationship Class
+# Relationship Class
 class Consultation:
     def __init__(self, consultation_id: str, patient: Patient, doctor: Doctor, queue_number: int, service: str,
                  base_charge: float):
@@ -178,7 +178,7 @@ class Consultation:
         return f"Consultation {self._consultation_id}: {self._patient.name} with {self._doctor.name}"
 
 
-# 6. Transaction Class (Composition)
+# Transaction Class (Composition)
 class BillingRecord:
     def __init__(self, bill_id: str, consultation: Consultation):
         self._bill_id = bill_id
@@ -212,7 +212,7 @@ class BillingRecord:
         return f"Bill [{self._bill_id}] - Amount: PHP {self._final_amount:.2f}"
 
 
-# 7. Manager Class
+# Manager Class
 class ClinicManager:
     def __init__(self):
         self.patients = {}
@@ -314,7 +314,7 @@ class ClinicManager:
         return waiting, (reg_count, sen_count, emg_count), total_subtotal, total_discount, doc_counts
 
 
-# --- HELPER FUNCTIONS FOR INPUT VALIDATION ---
+# HELPER FUNCTIONS FOR INPUT VALIDATION
 
 def get_string_input(prompt: str) -> str:
     while True:
@@ -331,7 +331,6 @@ def get_contact_input(prompt: str) -> str:
         if not value:
             print("      [!] This field cannot be empty. Please try again.")
             continue
-        # Check if it matches the pattern AND contains at least one digit
         if re.match(pattern, value) and any(char.isdigit() for char in value):
             return value
         print("      [!] Invalid contact format. Please use numbers, +, -, or spaces (e.g., +63 912-345-6789).")
