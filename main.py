@@ -521,7 +521,12 @@ def main():
             print(f"\n  [ERROR - Business Rule] {e}")
         except Exception as e:
             print(f"\n  [ERROR - System] {e}")
-
+        else:
+            if choice != '9':
+                print("\n  [INFO] Operation completed without errors.")
+        finally:
+            if choice != '9':
+                print(f"\n  {DIVIDER}")
 
 if __name__ == "__main__":
     main()
